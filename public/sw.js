@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mweb-ai-cache-v1';
+const CACHE_NAME = 'mweb-ai-cache-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -8,6 +8,7 @@ const STATIC_ASSETS = [
 ];
 
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(STATIC_ASSETS).catch((err) => {
@@ -15,7 +16,6 @@ self.addEventListener('install', (event) => {
       });
     })
   );
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -28,14 +28,21 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
-    })
+    }).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
-  // Let API requests pass through to network
-  if (event.request.url.includes('/api/')) {
+  // Pass non-GET and API requests directly to network
+  if (event.request.method !== 'GET' || event.request.url.includes('/api/')) {
+    return;
+  }
+
+  // Network first strategy for JS/TS source files to prevent stale Vite dev modules
+  if (event.request.url.includes('/src/') || event.request.url.includes('@vite')) {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match(event.request))
+    );
     return;
   }
 
@@ -57,11 +64,6 @@ self.addEventListener('fetch', (event) => {
           cache.put(event.request, responseToCache);
         });
         return networkResponse;
-      }).catch(() => {
-        // Fallback for navigation
-        if (event.request.mode === 'navigate') {
-          return caches.match('/');
-        }
       });
     })
   );

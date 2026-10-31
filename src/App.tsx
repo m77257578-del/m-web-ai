@@ -30,12 +30,17 @@ import {
 import { 
   auth, 
   db, 
-  googleProvider, 
+  googleProvider,
+  type FirebaseUser
+} from './firebase';
+import {
   signInWithPopup, 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   signOut, 
-  onAuthStateChanged,
+  onAuthStateChanged
+} from 'firebase/auth';
+import {
   doc, 
   getDoc, 
   setDoc, 
@@ -44,9 +49,8 @@ import {
   getDocs,
   query,
   where,
-  deleteDoc,
-  type FirebaseUser
-} from './firebase';
+  deleteDoc
+} from 'firebase/firestore';
 import platformData from '../data.json';
 import { ThreeDLoader } from './components/ThreeDLoader';
 
@@ -650,18 +654,29 @@ export default function App() {
     setIsLoadingChats(true);
     setMonitoredChats([]);
     try {
-      const q = query(collection(db, 'chat_sessions'), where('userId', '==', student.id));
-      const snap = await getDocs(q);
-      const chats = snap.docs.map(d => ({ id: d.id, ...(d.data() as Record<string, any>) }));
-      
-      if (chats.length === 0 && student.id === currentUser?.uid) {
-        setMonitoredChats(chatHistory);
-      } else {
-        setMonitoredChats(chats);
+      let chats: any[] = [];
+      if (student.id) {
+        const q = query(collection(db, 'chat_sessions'), where('userId', '==', student.id));
+        const snap = await getDocs(q);
+        chats = snap.docs.map(d => ({ id: d.id, ...(d.data() as Record<string, any>) }));
       }
+      
+      // Fallback 1: Query by email if empty
+      if (chats.length === 0 && student.email) {
+        const qEmail = query(collection(db, 'chat_sessions'), where('userEmail', '==', student.email));
+        const snapEmail = await getDocs(qEmail);
+        chats = snapEmail.docs.map(d => ({ id: d.id, ...(d.data() as Record<string, any>) }));
+      }
+
+      // Fallback 2: Local active history if student matches current logged in user
+      if (chats.length === 0 && (student.id === currentUser?.uid || student.email === currentUser?.email)) {
+        chats = chatHistory;
+      }
+
+      setMonitoredChats(chats);
     } catch (err) {
       console.error('Error fetching monitored chats:', err);
-      if (student.id === currentUser?.uid) {
+      if (student.id === currentUser?.uid || student.email === currentUser?.email) {
         setMonitoredChats(chatHistory);
       }
     } finally {
@@ -1423,7 +1438,7 @@ export default function App() {
         </button>
         {isAdminAuthenticated && (
           <button onClick={() => setActiveTab('admin')} className={`px-3 py-1.5 rounded-lg text-xs whitespace-nowrap flex items-center gap-1 font-semibold ${activeTab === 'admin' ? 'bg-amber-500 text-slate-950' : 'bg-amber-950/70 border border-amber-500/50 text-amber-300'}`}>
-            <ShieldCheck className="w-3.5 h-3.5" /> الأدمن (100100)
+            <ShieldCheck className="w-3.5 h-3.5" /> لوحة الإدارة
           </button>
         )}
       </div>
@@ -3341,8 +3356,8 @@ export default function App() {
                 <div>
                   <div className="flex items-center gap-2">
                     <h2 className="text-xl sm:text-2xl font-black text-white">لوحة تحكم المشرفين والإدارة العامة</h2>
-                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-mono font-bold">
-                      الكود 100100 مُعتمد
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold">
+                      وضع المشرف المعلم
                     </span>
                   </div>
                   <p className="text-xs text-slate-300 mt-1">
@@ -3464,11 +3479,11 @@ export default function App() {
                   <tr className="border-b border-blue-900/40 text-slate-400">
                     <th className="py-2.5 px-3">اسم الطالب</th>
                     <th className="py-2.5 px-3">البريد الإلكتروني</th>
-                    <th className="py-2.5 px-3">المدرسة</th>
-                    <th className="py-2.5 px-3">المحافظة</th>
-                    <th className="py-2.5 px-3">الصف والمرحلة</th>
-                    <th className="py-2.5 px-3 text-center">رصيد الجواهر</th>
-                    <th className="py-2.5 px-3 text-center">إجراء تحفيزي</th>
+                    <th className="py-2.5 px-3">المدرسة والمحافظة</th>
+                    <th className="py-2.5 px-3">الصف</th>
+                    <th className="py-2.5 px-3 text-center">الجواهر</th>
+                    <th className="py-2.5 px-3 text-center">💬 مراقبة المحادثات</th>
+                    <th className="py-2.5 px-3 text-center">إجراءات الحساب والحظر</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-blue-950/60">
@@ -3480,17 +3495,25 @@ export default function App() {
                       </div>
                       <span>{studentProfile.name}</span>
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-400/20 text-amber-300 border border-amber-400/30">
-                        (أنت حالياً)
+                        (حسابك)
                       </span>
                     </td>
                     <td className="py-3 px-3 text-slate-300 font-mono">
                       {currentUser?.email || 'حساب محلي متزامن'}
                     </td>
-                    <td className="py-3 px-3 text-slate-300">{studentProfile.school}</td>
-                    <td className="py-3 px-3 text-slate-300">{studentProfile.governorate}</td>
+                    <td className="py-3 px-3 text-slate-300">{studentProfile.school} ({studentProfile.governorate})</td>
                     <td className="py-3 px-3 text-slate-300">{selectedGrade}</td>
                     <td className="py-3 px-3 text-center font-mono font-bold text-amber-400">
                       {gems} 💎
+                    </td>
+                    <td className="py-3 px-3 text-center">
+                      <button
+                        onClick={() => handleMonitorStudentChats({ id: currentUser?.uid || 'local', name: studentProfile.name, email: currentUser?.email || '', school: studentProfile.school, governorate: studentProfile.governorate })}
+                        className="px-3 py-1.5 bg-[#172344] hover:bg-amber-500 hover:text-slate-950 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-sm"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
+                        <span>عرض المحادثات</span>
+                      </button>
                     </td>
                     <td className="py-3 px-3 text-center">
                       <button
@@ -3510,27 +3533,184 @@ export default function App() {
                           {(student.name || 'ط').charAt(0)}
                         </div>
                         <span>{student.name || 'طالب مجهول'}</span>
+                        {student.banned && (
+                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-red-500/20 text-red-300 border border-red-500/40 font-bold">
+                            محظور 🚫
+                          </span>
+                        )}
                       </td>
                       <td className="py-3 px-3 text-slate-300 font-mono">{student.email || 'غير مسجل'}</td>
-                      <td className="py-3 px-3 text-slate-300">{student.school || 'مدرسة حكومية'}</td>
-                      <td className="py-3 px-3 text-slate-300">{student.governorate || 'القاهرة'}</td>
+                      <td className="py-3 px-3 text-slate-300">{student.school || 'مدرسة حكومية'} ({student.governorate || 'القاهرة'})</td>
                       <td className="py-3 px-3 text-slate-300">{student.grade || selectedGrade}</td>
                       <td className="py-3 px-3 text-center font-mono font-bold text-amber-400">
                         {student.gems || 0} 💎
                       </td>
                       <td className="py-3 px-3 text-center">
                         <button
-                          onClick={() => handleAdminGrantGems(student.id, student.gems || 0)}
-                          className="px-2.5 py-1 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/40 text-blue-300 rounded-lg text-[11px] font-bold"
+                          onClick={() => handleMonitorStudentChats(student)}
+                          className="px-3 py-1.5 bg-[#172344] hover:bg-amber-500 hover:text-slate-950 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-sm"
                         >
-                          +50 💎 تحفيز
+                          <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
+                          <span>عرض المحادثات</span>
                         </button>
+                      </td>
+                      <td className="py-3 px-3 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => handleAdminGrantGems(student.id, student.gems || 0)}
+                            className="px-2 py-1 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/40 text-blue-300 rounded-lg text-[11px] font-bold"
+                            title="منح 50 جوهرة للطالب"
+                          >
+                            +50 💎
+                          </button>
+
+                          <button
+                            onClick={() => handleToggleBanUser(student.id, !!student.banned)}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors ${
+                              student.banned
+                                ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-600/40'
+                                : 'bg-red-600/20 text-red-300 border-red-500/40 hover:bg-red-600/40'
+                            }`}
+                            title={student.banned ? 'إلغاء حظر هذا الحساب' : 'حظر هذا الحساب من دخول المنصة'}
+                          >
+                            {student.banned ? 'فك الحظر 🔓' : 'حظر 🚫'}
+                          </button>
+
+                          <button
+                            onClick={() => handleDeleteUser(student.id, student.name)}
+                            className="p-1 text-slate-400 hover:text-red-400 rounded-lg hover:bg-slate-800 transition-colors"
+                            title="حذف الطالب نهائياً من قاعدة البيانات"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+
+            {/* MONITORED STUDENT CHAT LOGS DRAWER / CARD */}
+            {monitoredStudent && (
+              <div className="mt-6 pt-6 border-t-2 border-amber-500/40 bg-[#0A0F1D] rounded-2xl p-5 shadow-2xl space-y-4 animate-in fade-in">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-blue-900/50 gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-400 font-bold text-lg">
+                      💬
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-black text-white text-base">
+                          سجل محادثات الطالب: <span className="text-amber-300">{monitoredStudent.name || 'طالب مجهول'}</span>
+                        </h4>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${monitoredStudent.banned ? 'bg-red-500/20 text-red-300 border border-red-500/40' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'}`}>
+                          {monitoredStudent.banned ? 'محظور 🚫' : 'حساب نشط 🟢'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        البريد: <span className="font-mono text-amber-400">{monitoredStudent.email || 'حساب محلي'}</span> | المدرسة: {monitoredStudent.school || 'مدرسة حكومية'} | المحافظة: {monitoredStudent.governorate || 'القاهرة'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleToggleBanUser(monitoredStudent.id, !!monitoredStudent.banned)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 ${
+                        monitoredStudent.banned
+                          ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-600/50'
+                          : 'bg-red-600/30 text-red-300 border border-red-500/40 hover:bg-red-600/50'
+                      }`}
+                    >
+                      {monitoredStudent.banned ? 'فك حظر الطالب 🔓' : 'حظر الطالب 🚫'}
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setMonitoredStudent(null);
+                        setMonitoredChats([]);
+                      }}
+                      className="px-3 py-1.5 text-slate-300 hover:text-white rounded-xl bg-slate-800 border border-slate-700 text-xs font-bold flex items-center gap-1"
+                    >
+                      <X className="w-4 h-4" />
+                      <span>إغلاق السجل</span>
+                    </button>
+                  </div>
+                </div>
+
+                {isLoadingChats ? (
+                  <div className="py-10 text-center text-slate-400 text-xs flex items-center justify-center gap-2">
+                    <RefreshCw className="w-4 h-4 text-amber-400 animate-spin" />
+                    <span>جاري تحميل سجل المحادثات والرسائل من قاعدة بيانات Firestore...</span>
+                  </div>
+                ) : monitoredChats.length === 0 ? (
+                  <div className="py-8 text-center text-slate-400 text-xs bg-[#101932] border border-blue-900/40 rounded-xl p-4">
+                    <MessageSquare className="w-8 h-8 text-slate-500 mx-auto mb-2 opacity-50" />
+                    <p className="font-bold text-slate-300">لا توجد محادثات مسجلة لهذا الطالب في قاعدة البيانات حالياً.</p>
+                    <p className="text-[11px] text-slate-500 mt-1">يتم حفظ المحادثات تلقائياً في Firestore عند استخدام المعلم الذكي.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                      <MessageSquare className="w-4 h-4" />
+                      <span>جلسات المحادثة المكتشفة ({monitoredChats.length}):</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4">
+                      {monitoredChats.map((session, sIdx) => (
+                        <div key={session.id || sIdx} className="bg-[#101932] border border-blue-900/60 rounded-xl p-4 space-y-3 shadow-md">
+                          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-blue-900/40 pb-2.5">
+                            <div className="flex items-center gap-2">
+                              <span className="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center text-xs font-bold font-mono">
+                                #{sIdx + 1}
+                              </span>
+                              <div>
+                                <h5 className="font-bold text-white text-sm">{session.title || 'محادثة دراسية'}</h5>
+                                <span className="text-[10px] text-amber-300 font-medium">
+                                  المادة: {session.subject || selectedSubject} ({session.grade || selectedGrade})
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="text-[10px] font-mono text-slate-400">
+                              {session.updatedAt ? new Date(session.updatedAt).toLocaleString('ar-EG') : 'حديثاً'}
+                            </div>
+                          </div>
+
+                          {/* Message Bubbles Transcript */}
+                          <div className="space-y-2.5 max-h-80 overflow-y-auto p-3 scrollbar-thin bg-[#070B16] rounded-xl border border-blue-950">
+                            {(session.messages || []).map((msg: any, mIdx: number) => (
+                              <div
+                                key={mIdx}
+                                className={`flex flex-col p-3 rounded-xl text-xs max-w-[92%] ${
+                                  msg.role === 'user'
+                                    ? 'mr-auto bg-amber-500/15 border border-amber-500/30 text-amber-100'
+                                    : 'ml-auto bg-[#14234c] border border-blue-900/60 text-slate-200'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between gap-2 mb-1 border-b border-white/10 pb-1 text-[10px] font-bold">
+                                  <span className={msg.role === 'user' ? 'text-amber-300' : 'text-blue-300'}>
+                                    {msg.role === 'user' ? `👤 الطالب (${session.userName || monitoredStudent.name})` : '🤖 المعلم الذكي (M Web AI)'}
+                                  </span>
+                                  <span className="text-slate-400 font-mono">{msg.timestamp || ''}</span>
+                                </div>
+
+                                {msg.image && (
+                                  <img src={msg.image} alt="صورة المسألة المرفقة" className="max-w-xs rounded-lg my-1.5 border border-amber-500/40" />
+                                )}
+
+                                <div className="whitespace-pre-wrap leading-relaxed font-sans">{msg.content}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -3577,19 +3757,6 @@ export default function App() {
               >
                 <UserPlus className="w-3.5 h-3.5 inline ml-1" />
                 <span>طالب جديد</span>
-              </button>
-              <button
-                onClick={() => {
-                  setAuthTab('admin');
-                  setAuthError(null);
-                  setAuthSuccess(null);
-                }}
-                className={`flex-1 py-2 text-center text-xs font-bold rounded-lg transition-colors ${
-                  authTab === 'admin' ? 'bg-amber-500 text-slate-950 font-black' : 'text-amber-400 hover:bg-slate-800'
-                }`}
-              >
-                <Key className="w-3.5 h-3.5 inline ml-1 text-amber-400" />
-                <span>الأدمن (100100)</span>
               </button>
             </div>
 
@@ -3727,46 +3894,73 @@ export default function App() {
                 </button>
               </form>
             )}
+          </div>
+        </div>
+      )}
 
-            {/* TAB 3: ADMIN ACCESS (Code: 100100) */}
-            {authTab === 'admin' && (
-              <form onSubmit={handleAdminAccess} className="space-y-4">
-                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs">
-                  <div className="font-bold flex items-center gap-1.5 mb-1">
-                    <ShieldCheck className="w-4 h-4 text-amber-400" />
-                    <span>منطقة الإدارة والمعلمين المعتمدين</span>
-                  </div>
-                  <p className="text-[11px] text-slate-300">
-                    أدخل كود الأدمن السري <strong className="text-amber-400 font-mono">100100</strong> للوصول إلى لوحة التحكم، وإدارة قاعدة بيانات الطلاب وملف data.json.
-                  </p>
-                </div>
+      {/* SECRET ADMIN VERIFICATION MODAL (Accessible ONLY by clicking the app logo 3 times consecutively) */}
+      {showSecretAdminModal && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+          <div className="w-full max-w-sm bg-[#101932] border-2 border-amber-500/50 rounded-3xl p-6 shadow-2xl relative">
+            <button
+              onClick={() => {
+                setShowSecretAdminModal(false);
+                setAuthError(null);
+                setAdminCodeInput('');
+              }}
+              className="absolute top-4 left-4 text-slate-400 hover:text-white p-1"
+            >
+              <X className="w-5 h-5" />
+            </button>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                    كود دخول الإدارة (Admin Code):
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="password"
-                      required
-                      value={adminCodeInput}
-                      onChange={e => setAdminCodeInput(e.target.value)}
-                      placeholder="اكتب 100100 هنا"
-                      className="w-full bg-[#0A0F1D] border-2 border-amber-500/50 rounded-xl px-4 py-3 text-sm text-center text-amber-400 font-mono tracking-widest font-black focus:outline-none focus:border-amber-400"
-                    />
-                    <Key className="w-4 h-4 text-amber-400 absolute left-3.5 top-3.5" />
-                  </div>
-                </div>
+            <div className="text-center mb-5">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-400 mx-auto mb-3">
+                <ShieldCheck className="w-6 h-6 stroke-[2.5]" />
+              </div>
+              <h3 className="text-base font-black text-white">التحقق من صلاحيات الإدارة</h3>
+              <p className="text-xs text-slate-400 mt-1">يرجى إدخال رمز التحقق الخاص للمتابعة</p>
+            </div>
 
+            {authError && (
+              <div className="mb-4 p-3 rounded-xl bg-red-950/80 border border-red-500 text-red-200 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
+                <span>{authError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleAdminAccess} className="space-y-4">
+              <div>
+                <input
+                  type="password"
+                  required
+                  autoFocus
+                  value={adminCodeInput}
+                  onChange={e => setAdminCodeInput(e.target.value)}
+                  placeholder="رمز التحقق..."
+                  className="w-full bg-[#0A0F1D] border-2 border-amber-500/50 rounded-xl px-4 py-3 text-sm text-center text-amber-400 font-mono tracking-widest font-black focus:outline-none focus:border-amber-400"
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowSecretAdminModal(false);
+                    setAuthError(null);
+                    setAdminCodeInput('');
+                  }}
+                  className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl"
+                >
+                  إلغاء
+                </button>
                 <button
                   type="submit"
-                  className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-md shadow-amber-500/20 flex items-center justify-center gap-1.5"
+                  className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-md shadow-amber-500/20"
                 >
-                  <Unlock className="w-4 h-4" />
-                  <span>تأكيد الدخول للوحة الأدمن (100100)</span>
+                  تأكيد الدخول
                 </button>
-              </form>
-            )}
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -3932,17 +4126,6 @@ export default function App() {
           >
             <Smartphone className="w-3 h-3 text-emerald-400" />
             <span>تثبيت PWA</span>
-          </button>
-          <span className="text-slate-600">|</span>
-          <button
-            onClick={() => {
-              setAuthTab('admin');
-              setShowAuthModal(true);
-            }}
-            className="text-slate-400 hover:text-amber-400 transition-colors flex items-center gap-1"
-          >
-            <Lock className="w-3 h-3 text-amber-400" />
-            <span>دخول الأدمن (100100)</span>
           </button>
         </div>
       </footer>

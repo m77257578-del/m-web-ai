@@ -21,9 +21,24 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch((err) => {
-            console.log('SW registration note:', err);
-          });
+          if (window.location.hostname.includes('ais-dev') || window.location.hostname.includes('localhost')) {
+            navigator.serviceWorker.getRegistrations().then(registrations => {
+              for (let reg of registrations) {
+                reg.unregister();
+              }
+            });
+            if ('caches' in window) {
+              caches.keys().then(names => {
+                for (let name of names) caches.delete(name);
+              });
+            }
+          } else {
+            navigator.serviceWorker.register('/sw.js').then((reg) => {
+              reg.update();
+            }).catch((err) => {
+              console.log('SW registration note:', err);
+            });
+          }
         });
       }
     </script>

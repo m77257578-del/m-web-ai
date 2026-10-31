@@ -1,0 +1,6 @@
+{
+  "name": "M Web AI - منصة المذاكرة والتعليم المصري",
+  "description": "منصة الذكاء الاصطناعي التعليمية المتخصصة في مناهج وزارة التربية والتعليم المصرية لجميع الصفوف من إنتاج شركة M Web",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

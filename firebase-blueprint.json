@@ -1,0 +1,58 @@
+{
+  "entities": {
+    "users": {
+      "title": "User Profile",
+      "description": "Student user profile with name, school, gems, and level",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "school": { "type": "string" },
+        "governorate": { "type": "string" },
+        "stage": { "type": "string" },
+        "grade": { "type": "string" },
+        "gems": { "type": "number" },
+        "role": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "name", "gems"]
+    },
+    "study_records": {
+      "title": "Study Activity Record",
+      "description": "Daily study minutes, questions solved, and lessons reviewed",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "day": { "type": "string" },
+        "questions": { "type": "number" },
+        "studyMinutes": { "type": "number" },
+        "lessons": { "type": "number" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["id", "userId", "questions", "studyMinutes", "lessons"]
+    },
+    "chat_sessions": {
+      "title": "Chat History Session",
+      "description": "Archived student chats with AI tutor",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "stage": { "type": "string" },
+        "grade": { "type": "string" },
+        "subject": { "type": "string" },
+        "messages": { "type": "array" },
+        "createdAt": { "type": "string" },
+        "lastUpdated": { "type": "string" }
+      },
+      "required": ["id", "userId", "title", "messages"]
+    }
+  },
+  "firestore": {
+    "defaultRules": "allow read, write: if request.auth != null;"
+  }
+}

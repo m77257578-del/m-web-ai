@@ -1,0 +1,29 @@
+{
+  "id": "/",
+  "name": "M Web AI - منصة المذاكرة والتعليم المصري",
+  "short_name": "M Web AI",
+  "description": "منصة الذكاء الاصطناعي التعليمية المتخصصة في مناهج وزارة التربية والتعليم المصرية لجميع الصفوف من إنتاج شركة M Web",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0A0F1D",
+  "theme_color": "#0A0F1D",
+  "dir": "rtl",
+  "lang": "ar",
+  "categories": ["education", "productivity"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

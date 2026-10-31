@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F172E"/>
+      <stop offset="50%" stop-color="#0A0F1D"/>
+      <stop offset="100%" stop-color="#1E293B"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FBBF24"/>
+      <stop offset="50%" stop-color="#F59E0B"/>
+      <stop offset="100%" stop-color="#D97706"/>
+    </linearGradient>
+    <linearGradient id="blue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#1D4ED8"/>
+    </linearGradient>
+  </defs>
+  <!-- Background with rounded squircles -->
+  <rect width="512" height="512" rx="120" fill="url(#bg)"/>
+  <rect x="16" y="16" width="480" height="480" rx="104" fill="none" stroke="url(#gold)" stroke-width="8" opacity="0.6"/>
+  <!-- Open Book Symbol -->
+  <path d="M120 180 C 180 160, 240 180, 256 210 C 272 180, 332 160, 392 180 L 392 360 C 332 340, 272 360, 256 380 C 240 360, 180 340, 120 360 Z" fill="url(#gold)"/>
+  <path d="M256 210 L 256 380" stroke="#0A0F1D" stroke-width="8" stroke-linecap="round"/>
+  <!-- Star of Excellence -->
+  <polygon points="256,120 268,150 300,152 274,172 282,202 256,184 230,202 238,172 212,152 244,150" fill="url(#blue)"/>
+  <!-- M Web AI Text -->
+  <text x="256" y="440" font-family="system-ui, sans-serif" font-weight="900" font-size="38" fill="#F8FAFC" text-anchor="middle" letter-spacing="4">M WEB AI</text>
+</svg>
